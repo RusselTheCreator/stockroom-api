@@ -1,0 +1,55 @@
+{
+  "name": "stockroom-api",
+  "version": "1.0.0",
+  "description": "Production-ready inventory management REST API with JWT authentication and AI agent integration",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "migrate": "node database/migrate.js",
+    "test": "npm run test:all",
+    "test:unit": "jest tests/unit --coverage",
+    "test:api": "jest tests/api",
+    "test:functional": "jest tests/functional",
+    "test:e2e": "playwright test",
+    "test:all": "npm run test:unit && npm run test:api && npm run test:functional && npm run test:e2e"
+  },
+  "keywords": ["inventory", "stock", "warehouse", "api", "rest", "jwt", "postgresql"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.0.0",
+    "pg": "^8.11.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0",
+    "@anthropic-ai/sdk": "^0.27.3",
+    "openai": "^4.65.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.665.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3",
+    "@playwright/test": "^1.40.1",
+    "nodemon": "^3.0.2"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "routes/**/*.js",
+      "middleware/**/*.js",
+      "services/**/*.js",
+      "utils/**/*.js"
+    ],
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/"
+    ]
+  }
+}
