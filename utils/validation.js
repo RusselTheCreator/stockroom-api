@@ -17,7 +17,7 @@ function isValidEmail(email) {
 // Minimum 6 characters (can be enhanced for production)
 // =====================================================
 function isValidPassword(password) {
-  return password && password.length >= 6;
+  return !!(password && password.length >= 6);
 }
 
 // =====================================================

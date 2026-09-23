@@ -1,5 +1,7 @@
 # StockRoom API
 
+> **Note:** This project is hosted in a temporary Origin repository (`tmp-29967f0bc0f4cd7d`). The package name is `stockroom-api`. You can create a permanent repository by clicking the "Create repo" pill in the Cursor interface.
+
 Production-ready inventory management REST API with JWT authentication and AI agent integration.
 
 ## Features

@@ -69,7 +69,7 @@ describe('Authentication API', () => {
         });
       
       expect(response.status).toBe(400);
-      expect(response.body.error).toContain('password');
+      expect(response.body.error).toContain('Password');
     });
   });
   

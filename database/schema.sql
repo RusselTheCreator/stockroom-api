@@ -128,8 +128,8 @@ CREATE INDEX idx_stock_movements_created ON stock_movements(created_at DESC);
 -- Admin user with password: admin123
 -- User with password: user123
 INSERT INTO users (username, email, password_hash, role) VALUES
-('admin', 'admin@stockroom.local', '$2a$10$X1xH5P0TxqPRiLs.z8mJLezPGxhxPvQF9W8VtI5MqO5h8B8Z7nX8G', 'Admin'),
-('user', 'user@stockroom.local', '$2a$10$X1xH5P0TxqPRiLs.z8mJLezPGxhxPvQF9W8VtI5MqO5h8B8Z7nX8G', 'User');
+('admin', 'admin@stockroom.local', '$2a$10$CN8oOrIjAP2/i349pCnTpO7Dk9vxReP7uKWfjXbEv4Kc3MoesFwzm', 'Admin'),
+('user', 'user@stockroom.local', '$2a$10$o9leyl2JP.9ju1WtzAi04emAFAQsdb2sJzbFCC1y7FfHE.y1IVv3q', 'User');
 
 -- Sample suppliers
 INSERT INTO suppliers (name, email, phone, address, created_by) VALUES
