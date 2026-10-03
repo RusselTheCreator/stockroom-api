@@ -29,6 +29,8 @@ Content-Type: application/json
 }
 ```
 
+Public registration creates **User** accounts only. The only roles are **Admin** and **User**. Supplying `role: "Admin"` returns 400 `{ "error": "Public registration cannot grant the Admin role." }`.
+
 **Response (201):**
 ```json
 {
@@ -245,7 +247,7 @@ DELETE /api/warehouses/:id
 
 ## Stock Endpoints (JWT Required)
 
-GET accepts any valid JWT. `POST /api/stock/receive`, `POST /api/stock/issue`, and `POST /api/stock/adjust` are **Admin only**. A User JWT gets **403** `{ "error": "Access denied. Insufficient permissions." }` and quantities are not changed. If a stock payload includes `unit_price` (or a value derived from it), that field is a JSON number.
+GET accepts any valid JWT. `POST /api/stock/receive`, `POST /api/stock/issue`, and `POST /api/stock/adjust` are **Admin only**. A User JWT gets **403** `{ "error": "Access denied. Insufficient permissions." }` and quantities are not changed.
 
 ### List All Stock Levels
 ```http
@@ -472,14 +474,31 @@ This application does not track purchase or sales orders. An orders question is 
   "message": "Question answered successfully.",
   "provider": "mock",
   "question": "Which suppliers do we have?",
-  "answer": "Based on the current application data. suppliers (count 2; TechParts Inc, Global Components) This is a mock response for testing.",
+  "answer": "Based on the current application data. suppliers (count 2; Global Components, TechParts Inc) This is a mock response for testing.",
   "context_used": {
     "topics": ["suppliers"],
     "suppliers": {
       "count": 2,
       "returned": 2,
       "limit": 25,
-      "rows": []
+      "rows": [
+        {
+          "id": 2,
+          "name": "Global Components",
+          "email": "orders@globalcomp.com",
+          "phone": "+1-555-0200",
+          "address": "456 Supply Lane, Component City, NY 10001",
+          "is_active": true
+        },
+        {
+          "id": 1,
+          "name": "TechParts Inc",
+          "email": "sales@techparts.com",
+          "phone": "+1-555-0100",
+          "address": "123 Industrial Blvd, Tech City, CA 94000",
+          "is_active": true
+        }
+      ]
     }
   }
 }
@@ -557,6 +576,14 @@ Interactive Swagger UI for testing all endpoints.
 ---
 
 ## Error Responses
+
+### Common 400 Bad Request cases
+- Malformed JSON returns `{ "error": "Invalid JSON in request body." }`.
+- A non-integer path ID returns `{ "error": "Invalid id. Must be an integer." }`.
+- A non-string warehouse `name` returns `{ "error": "Warehouse name must be a string." }`; a non-string `location` returns `{ "error": "Warehouse location must be a string." }`.
+- A missing or non-string `/api/agent/ask` `question` returns `{ "error": "Question must be a string." }`; an empty string returns `{ "error": "Question is required." }`.
+- Public registration with `role: "Admin"` returns `{ "error": "Public registration cannot grant the Admin role." }`.
+
 
 ### 401 Unauthorized
 ```json
@@ -644,4 +671,4 @@ npm run test:e2e       # Playwright E2E tests
 ---
 
 **API Version:** 1.0.0  
-**Last Updated:** 2024
+**Last Updated:** 3 October 2026

@@ -86,6 +86,8 @@ router.get('/', async (req, res) => {
  *         description: Warehouse details
  *       404:
  *         description: Warehouse not found
+ *       400:
+ *         description: Invalid id. Must be an integer.
  */
 router.get('/:id', async (req, res) => {
   try {
@@ -151,7 +153,9 @@ router.get('/:id', async (req, res) => {
  *       201:
  *         description: Warehouse created successfully
  *       400:
- *         description: Validation error
+ *         description: Validation error, including non-string name or location
+ *       403:
+ *         description: Admin only. A User JWT receives {"error":"Access denied. Insufficient permissions."}.
  */
 router.post('/', authorizeUserRole('Admin'), async (req, res) => {
   try {
@@ -222,6 +226,8 @@ router.post('/', authorizeUserRole('Admin'), async (req, res) => {
  *         description: Warehouse updated successfully
  *       404:
  *         description: Warehouse not found
+ *       400:
+ *         description: Invalid id. Must be an integer. Non-string name or location also returns 400.
  */
 router.put('/:id', async (req, res) => {
   try {
@@ -311,6 +317,10 @@ router.put('/:id', async (req, res) => {
  *         description: Warehouse deleted successfully
  *       404:
  *         description: Warehouse not found
+ *       400:
+ *         description: Invalid id. Must be an integer.
+ *       403:
+ *         description: Admin only. A User JWT receives {"error":"Access denied. Insufficient permissions."}.
  */
 router.delete('/:id', authorizeUserRole('Admin'), async (req, res) => {
   try {

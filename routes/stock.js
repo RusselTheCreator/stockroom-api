@@ -136,6 +136,8 @@ router.get('/', async (req, res) => {
  *         description: Stock level details
  *       404:
  *         description: Stock level not found
+ *       400:
+ *         description: Invalid id. Must be an integer.
  */
 router.get('/:id', async (req, res) => {
   try {
@@ -211,6 +213,8 @@ router.get('/:id', async (req, res) => {
  *         description: Stock received successfully
  *       400:
  *         description: Validation error
+ *       403:
+ *         description: Admin only. A User JWT receives {"error":"Access denied. Insufficient permissions."}.
  */
 router.post('/receive', authorizeUserRole('Admin'), async (req, res) => {
   const client = await pool.connect();
@@ -343,6 +347,8 @@ router.post('/receive', authorizeUserRole('Admin'), async (req, res) => {
  *         description: Stock issued successfully
  *       400:
  *         description: Insufficient stock or validation error
+ *       403:
+ *         description: Admin only. A User JWT receives {"error":"Access denied. Insufficient permissions."}.
  */
 router.post('/issue', authorizeUserRole('Admin'), async (req, res) => {
   const client = await pool.connect();
@@ -462,6 +468,8 @@ router.post('/issue', authorizeUserRole('Admin'), async (req, res) => {
  *         description: Stock adjusted successfully
  *       400:
  *         description: Validation error
+ *       403:
+ *         description: Admin only. A User JWT receives {"error":"Access denied. Insufficient permissions."}.
  */
 router.post('/adjust', authorizeUserRole('Admin'), async (req, res) => {
   const client = await pool.connect();

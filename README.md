@@ -7,7 +7,7 @@ Production-ready inventory management REST API with JWT authentication and AI ag
 
 ## Features
 
-- ✅ **Complete CRUD Operations** for Products, Suppliers, Warehouses, Stock Levels
+- ✅ **Resource Management** - Complete CRUD for Products, Suppliers, and Warehouses; stock levels support GET plus POST `/api/stock/receive`, `/issue`, and `/adjust` (no stock delete)
 - 🔐 **JWT Authentication** with role-based access control (Admin/User)
 - 📦 **Inventory Management** - Receive, Issue, and Adjust stock with audit trail
 - 🤖 **AI Agent Integration** - Pluggable AI providers (OpenAI, Anthropic, AWS Bedrock, Mock)
@@ -144,6 +144,7 @@ Open your browser to:
 | `AWS_ACCESS_KEY_ID` | Conditional | - | Required when AI_PROVIDER=bedrock |
 | `AWS_SECRET_ACCESS_KEY` | Conditional | - | Required when AI_PROVIDER=bedrock |
 | `AWS_REGION` | No | us-east-1 | AWS region for Bedrock |
+| `AWS_BEDROCK_MODEL_ID` | No | anthropic.claude-3-sonnet-20240229-v1:0 | Bedrock model ID used by the Converse API (Claude or Amazon Nova) |
 
 ## API Endpoints
 
@@ -153,6 +154,8 @@ Open your browser to:
 |--------|----------|-------------|
 | POST | `/api/authentication/register` | Register new user |
 | POST | `/api/authentication/login` | Login and receive JWT |
+
+Public registration can create **User** accounts only. Supplying `role: "Admin"` returns 400 `{ "error": "Public registration cannot grant the Admin role." }`. The only roles are **Admin** and **User**.
 
 ### Products (JWT Required)
 
@@ -188,7 +191,7 @@ Open your browser to:
 
 ### Stock Levels (JWT Required)
 
-GET accepts any valid JWT. If a stock response includes `unit_price` or a value derived from it, that field is a JSON number. POST receive, issue, and adjust are Admin-only (User receives **403** and stock is not changed).
+GET accepts any valid JWT. POST receive, issue, and adjust are Admin-only (a User token receives **403** `{ "error": "Access denied. Insufficient permissions." }` and stock is not changed).
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -230,6 +233,13 @@ The mock provider (`AI_PROVIDER=mock`) needs no API keys. It echoes the selected
 | POST | `/api/agent/reorder-advice` | Get AI reorder recommendations |
 | POST | `/api/agent/ask` | Ask about products, suppliers, warehouses, stock, movements, or (Admin) users |
 | GET | `/api/agent/status` | Get AI provider status |
+
+### Common 400 responses
+
+- Malformed JSON returns 400 `{ "error": "Invalid JSON in request body." }`.
+- A non-integer path ID returns 400 `{ "error": "Invalid id. Must be an integer." }`.
+- A non-string warehouse `name` or `location` returns 400 with `Warehouse name must be a string.` or `Warehouse location must be a string.`
+- A missing or non-string agent `question` returns 400 with `Question must be a string.`; an empty string returns `Question is required.`
 
 ## Usage Examples
 
@@ -327,7 +337,7 @@ ANTHROPIC_API_KEY=sk-ant-your-anthropic-api-key
 
 Uses Claude 3 Sonnet for inventory intelligence.
 
-### AWS Bedrock (Claude via AWS)
+### AWS Bedrock (Claude or Amazon Nova via AWS)
 
 ```env
 AI_PROVIDER=bedrock
@@ -337,7 +347,7 @@ AWS_REGION=us-east-1
 AWS_BEDROCK_MODEL_ID=anthropic.claude-3-sonnet-20240229-v1:0
 ```
 
-Uses Claude through AWS Bedrock service.
+Uses the AWS Bedrock Converse API and works with Claude and Amazon Nova models, for example `amazon.nova-micro-v1:0`. `AWS_BEDROCK_MODEL_ID` defaults to `anthropic.claude-3-sonnet-20240229-v1:0` when it is not set.
 
 ## Testing
 

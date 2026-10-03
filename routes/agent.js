@@ -48,6 +48,8 @@ router.use(apiRequestJWTCheck);
  *     responses:
  *       200:
  *         description: Reorder recommendations
+ *       400:
+ *         description: Non-integer product_id or warehouse_id. Errors are 'product_id must be an integer.' or 'warehouse_id must be an integer.'.
  *       500:
  *         description: AI provider error
  */
@@ -170,7 +172,7 @@ router.post('/reorder-advice', async (req, res) => {
  *       200:
  *         description: AI-generated answer grounded in selected rows
  *       400:
- *         description: Missing question
+ *         description: Missing or non-string question. Missing/non-string values return 'Question must be a string.'; an empty string returns 'Question is required.'.
  *       403:
  *         description: User records requested by a non-Admin
  *       500:

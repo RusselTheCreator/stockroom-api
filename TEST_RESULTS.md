@@ -6,6 +6,10 @@ All test suites have been executed and are **PASSING** ✅
 
 ---
 
+## Current Suite Note — 3 October 2026
+
+The September 23 counts below are historical. A targeted unit run on 3 October 2026 passed 2 suites and 22 tests. The current suite also includes `POST /api/agent/ask` coverage and bad-input coverage in `tests/api/agent-ask.test.js` and `tests/api/bad-input.test.js`. The full suite was not rerun for this documentation update.
+
 ## Unit Tests
 
 **Command:** `npm run test:unit`

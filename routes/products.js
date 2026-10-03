@@ -108,6 +108,8 @@ router.get('/', async (req, res) => {
  *         description: Product details
  *       404:
  *         description: Product not found
+ *       400:
+ *         description: Invalid id. Must be an integer.
  */
 router.get('/:id', async (req, res) => {
   try {
@@ -187,6 +189,8 @@ router.get('/:id', async (req, res) => {
  *         description: Product created successfully
  *       400:
  *         description: Validation error
+ *       403:
+ *         description: Admin only. A User JWT receives {"error":"Access denied. Insufficient permissions."}.
  */
 router.post('/', authorizeUserRole('Admin'), async (req, res) => {
   try {
@@ -292,6 +296,8 @@ router.post('/', authorizeUserRole('Admin'), async (req, res) => {
  *         description: Product updated successfully
  *       404:
  *         description: Product not found
+ *       400:
+ *         description: Invalid id. Must be an integer.
  */
 router.put('/:id', async (req, res) => {
   try {
@@ -437,6 +443,10 @@ router.put('/:id', async (req, res) => {
  *         description: Product deleted successfully
  *       404:
  *         description: Product not found
+ *       400:
+ *         description: Invalid id. Must be an integer.
+ *       403:
+ *         description: Admin only. A User JWT receives {"error":"Access denied. Insufficient permissions."}.
  */
 router.delete('/:id', authorizeUserRole('Admin'), async (req, res) => {
   try {
