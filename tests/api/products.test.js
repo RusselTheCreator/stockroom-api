@@ -9,6 +9,7 @@ const pool = require('../../database/db');
 
 describe('Products API', () => {
   let authToken;
+  let userToken;
   let createdProductId;
   
   // LOGIN BEFORE TESTS TO GET AUTH TOKEN
@@ -22,6 +23,14 @@ describe('Products API', () => {
       });
     
     authToken = response.body.jwtToken;
+
+    const userResponse = await request(app)
+      .post('/api/authentication/login')
+      .send({
+        username: 'user',
+        password: 'user123'
+      });
+    userToken = userResponse.body.jwtToken;
   });
   
   // CLEAN UP TEST PRODUCTS
@@ -46,7 +55,30 @@ describe('Products API', () => {
       expect(response.status).toBe(201);
       expect(response.body.message).toContain('created');
       expect(response.body.product.sku).toBe('TEST-001');
+      expect(typeof response.body.product.unit_price).toBe('number');
+      expect(response.body.product.unit_price).toBe(19.99);
       createdProductId = response.body.product.id;
+    });
+
+    test('should reject product creation for a User and leave no row', async () => {
+      const before = await pool.query('SELECT id FROM products WHERE sku = $1', ['TEST-USER-403']);
+      expect(before.rows.length).toBe(0);
+
+      const response = await request(app)
+        .post('/api/products')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          sku: 'TEST-USER-403',
+          name: 'Forbidden Product',
+          unit: 'piece',
+          unit_price: 12.50
+        });
+
+      expect(response.status).toBe(403);
+      expect(response.body).toEqual({ error: 'Access denied. Insufficient permissions.' });
+
+      const after = await pool.query('SELECT id FROM products WHERE sku = $1', ['TEST-USER-403']);
+      expect(after.rows.length).toBe(0);
     });
     
     test('should reject product creation without auth', async () => {
@@ -87,6 +119,10 @@ describe('Products API', () => {
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('products');
       expect(Array.isArray(response.body.products)).toBe(true);
+      const widget = response.body.products.find(product => product.sku === 'WIDGET-001');
+      expect(widget).toBeDefined();
+      expect(typeof widget.unit_price).toBe('number');
+      expect(widget.unit_price).toBe(12.5);
     });
     
     test('should reject without auth', async () => {
@@ -128,11 +164,33 @@ describe('Products API', () => {
       
       expect(response.status).toBe(200);
       expect(response.body.product.name).toBe('Updated Test Product');
-      expect(parseFloat(response.body.product.unit_price)).toBe(24.99);
+      expect(typeof response.body.product.unit_price).toBe('number');
+      expect(response.body.product.unit_price).toBe(24.99);
     });
   });
   
   describe('DELETE /api/products/:id', () => {
+    test('should reject delete for a User and leave the row unchanged', async () => {
+      const before = await pool.query(
+        'SELECT sku, name, is_active, unit_price, updated_at FROM products WHERE id = $1',
+        [createdProductId]
+      );
+      expect(before.rows.length).toBe(1);
+
+      const response = await request(app)
+        .delete(`/api/products/${createdProductId}`)
+        .set('Authorization', `Bearer ${userToken}`);
+
+      expect(response.status).toBe(403);
+      expect(response.body).toEqual({ error: 'Access denied. Insufficient permissions.' });
+
+      const after = await pool.query(
+        'SELECT sku, name, is_active, unit_price, updated_at FROM products WHERE id = $1',
+        [createdProductId]
+      );
+      expect(after.rows).toEqual(before.rows);
+    });
+
     test('should soft delete product', async () => {
       const response = await request(app)
         .delete(`/api/products/${createdProductId}`)

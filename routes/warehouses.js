@@ -8,6 +8,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../database/db');
 const apiRequestJWTCheck = require('../middleware/apiRequestJWTCheck');
+const authorizeUserRole = require('../middleware/authorizeUserRole');
 const { isRequired, isIntegerId } = require('../utils/validation');
 
 // APPLY JWT AUTHENTICATION TO ALL WAREHOUSE ROUTES
@@ -152,7 +153,7 @@ router.get('/:id', async (req, res) => {
  *       400:
  *         description: Validation error
  */
-router.post('/', async (req, res) => {
+router.post('/', authorizeUserRole('Admin'), async (req, res) => {
   try {
     // STEP 1: EXTRACT WAREHOUSE DATA FROM REQUEST BODY
     const { name, location, is_active = true } = req.body;
@@ -311,7 +312,7 @@ router.put('/:id', async (req, res) => {
  *       404:
  *         description: Warehouse not found
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authorizeUserRole('Admin'), async (req, res) => {
   try {
     // STEP 1: GET WAREHOUSE ID FROM URL
     const { id } = req.params;

@@ -62,7 +62,11 @@ function classifyQuestion(question) {
 
 function money(value) {
   const number = Number(value || 0);
-  return number.toFixed(2);
+  if (!Number.isFinite(number)) {
+    return 0;
+  }
+  // JSON number, not a two-decimal string. 12.50 serializes as 12.5.
+  return Math.round(number * 100) / 100;
 }
 
 async function countOf(sql) {

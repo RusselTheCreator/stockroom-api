@@ -8,6 +8,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../database/db');
 const apiRequestJWTCheck = require('../middleware/apiRequestJWTCheck');
+const authorizeUserRole = require('../middleware/authorizeUserRole');
 const { isRequired, isValidEmail, isIntegerId } = require('../utils/validation');
 
 // APPLY JWT AUTHENTICATION TO ALL SUPPLIER ROUTES
@@ -155,7 +156,7 @@ router.get('/:id', async (req, res) => {
  *       400:
  *         description: Validation error
  */
-router.post('/', async (req, res) => {
+router.post('/', authorizeUserRole('Admin'), async (req, res) => {
   try {
     // STEP 1: EXTRACT SUPPLIER DATA FROM REQUEST BODY
     const { name, email, phone, address, is_active = true } = req.body;
@@ -316,7 +317,7 @@ router.put('/:id', async (req, res) => {
  *       404:
  *         description: Supplier not found
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authorizeUserRole('Admin'), async (req, res) => {
   try {
     // STEP 1: GET SUPPLIER ID FROM URL
     const { id } = req.params;

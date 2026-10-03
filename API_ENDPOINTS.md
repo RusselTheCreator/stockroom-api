@@ -75,6 +75,16 @@ Content-Type: application/json
 
 **All requests require:** `Authorization: Bearer <token>`
 
+`unit_price` is a JSON number on list, get, create, and update (the `products.unit_price` column stays `DECIMAL`). `12.50` is returned as `12.5`, not `"12.50"`.
+
+**Admin only:** `POST /api/products`, `DELETE /api/products/:id`. A User JWT gets **403**:
+
+```json
+{ "error": "Access denied. Insufficient permissions." }
+```
+
+The row is not created or changed. GET and PUT stay open to any valid JWT.
+
 ### List All Products
 ```http
 GET /api/products
@@ -93,7 +103,7 @@ GET /api/products?active_only=true
       "name": "Standard Widget",
       "description": "High-quality standard widget",
       "unit": "piece",
-      "unit_price": "12.50",
+      "unit_price": 12.5,
       "reorder_level": 100,
       "supplier_id": 1,
       "is_active": true,
@@ -146,6 +156,8 @@ DELETE /api/products/:id
 
 ## Suppliers Endpoints (JWT Required)
 
+**Admin only:** `POST /api/suppliers` and `DELETE /api/suppliers/:id`. User JWT gets **403** `{ "error": "Access denied. Insufficient permissions." }` and the row is unchanged. GET and PUT accept any valid JWT.
+
 ### List All Suppliers
 ```http
 GET /api/suppliers
@@ -190,6 +202,8 @@ DELETE /api/suppliers/:id
 
 ## Warehouses Endpoints (JWT Required)
 
+**Admin only:** `POST /api/warehouses` and `DELETE /api/warehouses/:id`. User JWT gets **403** `{ "error": "Access denied. Insufficient permissions." }` and the row is unchanged. GET and PUT accept any valid JWT.
+
 ### List All Warehouses
 ```http
 GET /api/warehouses
@@ -230,6 +244,8 @@ DELETE /api/warehouses/:id
 ---
 
 ## Stock Endpoints (JWT Required)
+
+GET accepts any valid JWT. `POST /api/stock/receive`, `POST /api/stock/issue`, and `POST /api/stock/adjust` are **Admin only**. A User JWT gets **403** `{ "error": "Access denied. Insufficient permissions." }` and quantities are not changed. If a stock payload includes `unit_price` (or a value derived from it), that field is a JSON number.
 
 ### List All Stock Levels
 ```http

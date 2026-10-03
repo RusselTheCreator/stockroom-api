@@ -8,6 +8,8 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../database/db');
 const apiRequestJWTCheck = require('../middleware/apiRequestJWTCheck');
+const authorizeUserRole = require('../middleware/authorizeUserRole');
+const { withUnitPrice } = require('../utils/money');
 const { isRequired, isPositiveNumber, isIntegerId } = require('../utils/validation');
 
 // APPLY JWT AUTHENTICATION TO ALL PRODUCT ROUTES
@@ -73,7 +75,7 @@ router.get('/', async (req, res) => {
     return res.status(200).json({
       message: 'Products retrieved successfully.',
       count: result.rows.length,
-      products: result.rows
+      products: result.rows.map(withUnitPrice)
     });
     
   } catch (error) {
@@ -130,7 +132,7 @@ router.get('/:id', async (req, res) => {
     // STEP 4: RETURN PRODUCT DATA
     return res.status(200).json({
       message: 'Product retrieved successfully.',
-      product: result.rows[0]
+      product: withUnitPrice(result.rows[0])
     });
     
   } catch (error) {
@@ -186,7 +188,7 @@ router.get('/:id', async (req, res) => {
  *       400:
  *         description: Validation error
  */
-router.post('/', async (req, res) => {
+router.post('/', authorizeUserRole('Admin'), async (req, res) => {
   try {
     // STEP 1: EXTRACT PRODUCT DATA FROM REQUEST BODY
     const {
@@ -251,7 +253,7 @@ router.post('/', async (req, res) => {
     // STEP 6: RETURN SUCCESS RESPONSE WITH NEW PRODUCT
     return res.status(201).json({
       message: 'Product created successfully.',
-      product: result.rows[0]
+      product: withUnitPrice(result.rows[0])
     });
     
   } catch (error) {
@@ -402,7 +404,7 @@ router.put('/:id', async (req, res) => {
     // STEP 10: RETURN UPDATED PRODUCT
     return res.status(200).json({
       message: 'Product updated successfully.',
-      product: result.rows[0]
+      product: withUnitPrice(result.rows[0])
     });
     
   } catch (error) {
@@ -436,7 +438,7 @@ router.put('/:id', async (req, res) => {
  *       404:
  *         description: Product not found
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authorizeUserRole('Admin'), async (req, res) => {
   try {
     // STEP 1: GET PRODUCT ID FROM URL
     const { id } = req.params;

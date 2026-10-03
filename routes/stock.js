@@ -9,6 +9,8 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../database/db');
 const apiRequestJWTCheck = require('../middleware/apiRequestJWTCheck');
+const authorizeUserRole = require('../middleware/authorizeUserRole');
+const { withUnitPrice } = require('../utils/money');
 const { isRequired, isPositiveNumber, isInteger, isIntegerId } = require('../utils/validation');
 
 // APPLY JWT AUTHENTICATION TO ALL STOCK ROUTES
@@ -101,7 +103,7 @@ router.get('/', async (req, res) => {
     return res.status(200).json({
       message: 'Stock levels retrieved successfully.',
       count: result.rows.length,
-      stock: result.rows
+      stock: result.rows.map(withUnitPrice)
     });
     
   } catch (error) {
@@ -163,7 +165,7 @@ router.get('/:id', async (req, res) => {
     // STEP 4: RETURN STOCK LEVEL DATA
     return res.status(200).json({
       message: 'Stock level retrieved successfully.',
-      stock: result.rows[0]
+      stock: withUnitPrice(result.rows[0])
     });
     
   } catch (error) {
@@ -210,7 +212,7 @@ router.get('/:id', async (req, res) => {
  *       400:
  *         description: Validation error
  */
-router.post('/receive', async (req, res) => {
+router.post('/receive', authorizeUserRole('Admin'), async (req, res) => {
   const client = await pool.connect();
   
   try {
@@ -291,7 +293,7 @@ router.post('/receive', async (req, res) => {
     // STEP 9: RETURN SUCCESS RESPONSE
     return res.status(200).json({
       message: 'Stock received successfully.',
-      stock: updatedStock
+      stock: withUnitPrice(updatedStock)
     });
     
   } catch (error) {
@@ -342,7 +344,7 @@ router.post('/receive', async (req, res) => {
  *       400:
  *         description: Insufficient stock or validation error
  */
-router.post('/issue', async (req, res) => {
+router.post('/issue', authorizeUserRole('Admin'), async (req, res) => {
   const client = await pool.connect();
   
   try {
@@ -410,7 +412,7 @@ router.post('/issue', async (req, res) => {
     // STEP 9: RETURN SUCCESS RESPONSE
     return res.status(200).json({
       message: 'Stock issued successfully.',
-      stock: updateResult.rows[0]
+      stock: withUnitPrice(updateResult.rows[0])
     });
     
   } catch (error) {
@@ -461,7 +463,7 @@ router.post('/issue', async (req, res) => {
  *       400:
  *         description: Validation error
  */
-router.post('/adjust', async (req, res) => {
+router.post('/adjust', authorizeUserRole('Admin'), async (req, res) => {
   const client = await pool.connect();
   
   try {
@@ -532,7 +534,7 @@ router.post('/adjust', async (req, res) => {
     // STEP 9: RETURN SUCCESS RESPONSE
     return res.status(200).json({
       message: 'Stock adjusted successfully.',
-      stock: updatedStock,
+      stock: withUnitPrice(updatedStock),
       adjustment: adjustmentAmount
     });
     

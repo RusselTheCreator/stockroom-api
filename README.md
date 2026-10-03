@@ -51,7 +51,8 @@ stockroom-api/
 │   ├── aiProvider.js         # AI provider abstraction layer
 │   └── askContext.js         # Question-specific context for /api/agent/ask
 ├── utils/
-│   └── validation.js         # Input validation helpers
+│   ├── validation.js         # Input validation helpers
+│   └── money.js              # Serialize DECIMAL unit_price as a JSON number
 ├── tests/
 │   ├── unit/                 # Unit tests
 │   ├── api/                  # API integration tests
@@ -155,43 +156,47 @@ Open your browser to:
 
 ### Products (JWT Required)
 
+`unit_price` is a JSON number in every product response (list, get, create, and update). The database column stays `DECIMAL(10, 2)`; `12.50` is returned as `12.5`, not the string `"12.50"`. GET and PUT accept any valid JWT. POST and DELETE are Admin-only: a User token receives **403** `{ "error": "Access denied. Insufficient permissions." }` and the row is not changed.
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/products` | List all products |
-| GET | `/api/products/:id` | Get product by ID |
-| POST | `/api/products` | Create new product |
-| PUT | `/api/products/:id` | Update product |
-| DELETE | `/api/products/:id` | Delete product (soft delete) |
+| GET | `/api/products` | List all products (any valid JWT) |
+| GET | `/api/products/:id` | Get product by ID (any valid JWT) |
+| POST | `/api/products` | Create new product (**Admin only**) |
+| PUT | `/api/products/:id` | Update product (any valid JWT) |
+| DELETE | `/api/products/:id` | Delete product (soft delete, **Admin only**) |
 
 ### Suppliers (JWT Required)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/suppliers` | List all suppliers |
-| GET | `/api/suppliers/:id` | Get supplier by ID |
-| POST | `/api/suppliers` | Create new supplier |
-| PUT | `/api/suppliers/:id` | Update supplier |
-| DELETE | `/api/suppliers/:id` | Delete supplier |
+| GET | `/api/suppliers` | List all suppliers (any valid JWT) |
+| GET | `/api/suppliers/:id` | Get supplier by ID (any valid JWT) |
+| POST | `/api/suppliers` | Create new supplier (**Admin only**) |
+| PUT | `/api/suppliers/:id` | Update supplier (any valid JWT) |
+| DELETE | `/api/suppliers/:id` | Delete supplier (**Admin only**) |
 
 ### Warehouses (JWT Required)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/warehouses` | List all warehouses |
-| GET | `/api/warehouses/:id` | Get warehouse by ID |
-| POST | `/api/warehouses` | Create new warehouse |
-| PUT | `/api/warehouses/:id` | Update warehouse |
-| DELETE | `/api/warehouses/:id` | Delete warehouse |
+| GET | `/api/warehouses` | List all warehouses (any valid JWT) |
+| GET | `/api/warehouses/:id` | Get warehouse by ID (any valid JWT) |
+| POST | `/api/warehouses` | Create new warehouse (**Admin only**) |
+| PUT | `/api/warehouses/:id` | Update warehouse (any valid JWT) |
+| DELETE | `/api/warehouses/:id` | Delete warehouse (**Admin only**) |
 
 ### Stock Levels (JWT Required)
 
+GET accepts any valid JWT. If a stock response includes `unit_price` or a value derived from it, that field is a JSON number. POST receive, issue, and adjust are Admin-only (User receives **403** and stock is not changed).
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/stock` | List all stock levels |
-| GET | `/api/stock/:id` | Get stock level by ID |
-| POST | `/api/stock/receive` | Receive inventory (increase) |
-| POST | `/api/stock/issue` | Issue inventory (decrease) |
-| POST | `/api/stock/adjust` | Adjust to specific quantity |
+| GET | `/api/stock` | List all stock levels (any valid JWT) |
+| GET | `/api/stock/:id` | Get stock level by ID (any valid JWT) |
+| POST | `/api/stock/receive` | Receive inventory (increase, **Admin only**) |
+| POST | `/api/stock/issue` | Issue inventory (decrease, **Admin only**) |
+| POST | `/api/stock/adjust` | Adjust to specific quantity (**Admin only**) |
 
 ### Stock Movements (JWT Required)
 
@@ -251,7 +256,7 @@ curl -X POST http://localhost:3100/api/authentication/login \
 # Returns: { "jwtToken": "eyJhbG...", "user": {...} }
 ```
 
-### 2. Create Product (with JWT)
+### 2. Create Product (Admin JWT)
 
 ```bash
 curl -X POST http://localhost:3100/api/products \
@@ -267,7 +272,7 @@ curl -X POST http://localhost:3100/api/products \
   }'
 ```
 
-### 3. Receive Stock
+### 3. Receive Stock (Admin JWT)
 
 ```bash
 curl -X POST http://localhost:3100/api/stock/receive \

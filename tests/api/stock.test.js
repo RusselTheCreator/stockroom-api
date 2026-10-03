@@ -9,6 +9,7 @@ const pool = require('../../database/db');
 
 describe('Stock Operations API', () => {
   let authToken;
+  let userToken;
   let testProductId;
   let testWarehouseId;
   
@@ -23,6 +24,14 @@ describe('Stock Operations API', () => {
       });
     
     authToken = loginResponse.body.jwtToken;
+
+    const userLogin = await request(app)
+      .post('/api/authentication/login')
+      .send({
+        username: 'user',
+        password: 'user123'
+      });
+    userToken = userLogin.body.jwtToken;
     
     // CREATE TEST PRODUCT
     const productResponse = await request(app)
@@ -112,6 +121,42 @@ describe('Stock Operations API', () => {
         });
       
       expect(response.status).toBe(400);
+    });
+
+    test('should reject receive for a User and leave quantity unchanged', async () => {
+      const before = await pool.query(
+        'SELECT quantity, last_updated FROM stock_levels WHERE product_id = $1 AND warehouse_id = $2',
+        [testProductId, testWarehouseId]
+      );
+      expect(before.rows.length).toBe(1);
+      const movementsBefore = await pool.query(
+        'SELECT COUNT(*)::int AS count FROM stock_movements WHERE product_id = $1 AND warehouse_id = $2',
+        [testProductId, testWarehouseId]
+      );
+
+      const response = await request(app)
+        .post('/api/stock/receive')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          product_id: testProductId,
+          warehouse_id: testWarehouseId,
+          quantity: 10,
+          reason: 'Should not apply'
+        });
+
+      expect(response.status).toBe(403);
+      expect(response.body).toEqual({ error: 'Access denied. Insufficient permissions.' });
+
+      const after = await pool.query(
+        'SELECT quantity, last_updated FROM stock_levels WHERE product_id = $1 AND warehouse_id = $2',
+        [testProductId, testWarehouseId]
+      );
+      expect(after.rows).toEqual(before.rows);
+      const movementsAfter = await pool.query(
+        'SELECT COUNT(*)::int AS count FROM stock_movements WHERE product_id = $1 AND warehouse_id = $2',
+        [testProductId, testWarehouseId]
+      );
+      expect(movementsAfter.rows[0].count).toBe(movementsBefore.rows[0].count);
     });
   });
   

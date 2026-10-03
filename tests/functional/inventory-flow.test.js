@@ -9,6 +9,7 @@ const pool = require('../../database/db');
 
 describe('Complete Inventory Flow', () => {
   let authToken;
+  let adminToken;
   let userId;
   let productId;
   let supplierId;
@@ -59,12 +60,21 @@ describe('Complete Inventory Flow', () => {
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('jwtToken');
       authToken = response.body.jwtToken;
+
+      const admin = await request(app)
+        .post('/api/authentication/login')
+        .send({
+          username: 'admin',
+          password: 'admin123'
+        });
+      expect(admin.status).toBe(200);
+      adminToken = admin.body.jwtToken;
     });
     
     test('Step 3: Create a supplier', async () => {
       const response = await request(app)
         .post('/api/suppliers')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({
           name: 'Flow Test Supplier',
           email: 'supplier@test.com',
@@ -78,7 +88,7 @@ describe('Complete Inventory Flow', () => {
     test('Step 4: Create a warehouse', async () => {
       const response = await request(app)
         .post('/api/warehouses')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({
           name: 'Flow Test Warehouse',
           location: 'Test City, State 12345'
@@ -91,7 +101,7 @@ describe('Complete Inventory Flow', () => {
     test('Step 5: Create a product', async () => {
       const response = await request(app)
         .post('/api/products')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({
           sku: 'FLOW-TEST-001',
           name: 'Flow Test Product',
@@ -109,7 +119,7 @@ describe('Complete Inventory Flow', () => {
     test('Step 6: Receive initial stock', async () => {
       const response = await request(app)
         .post('/api/stock/receive')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({
           product_id: productId,
           warehouse_id: warehouseId,
@@ -147,7 +157,7 @@ describe('Complete Inventory Flow', () => {
     test('Step 9: Issue stock', async () => {
       const response = await request(app)
         .post('/api/stock/issue')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({
           product_id: productId,
           warehouse_id: warehouseId,
@@ -187,7 +197,7 @@ describe('Complete Inventory Flow', () => {
     test('Step 12: Adjust stock after physical count', async () => {
       const response = await request(app)
         .post('/api/stock/adjust')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Authorization', `Bearer ${adminToken}`)
         .send({
           product_id: productId,
           warehouse_id: warehouseId,
