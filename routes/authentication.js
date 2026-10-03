@@ -40,8 +40,9 @@ const { isValidEmail, isValidPassword, isRequired, isValidRole } = require('../u
  *                 type: string
  *               role:
  *                 type: string
- *                 enum: [Admin, User]
+ *                 enum: [User]
  *                 default: User
+ *                 description: Public registration creates User accounts only. Admin is rejected.
  *     responses:
  *       201:
  *         description: User registered successfully
@@ -69,8 +70,12 @@ router.post('/register', async (req, res) => {
     if (!isValidPassword(password)) {
       return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
     }
+    // Public registration cannot grant Admin. Seeded admins are unchanged.
+    if (role === 'Admin') {
+      return res.status(400).json({ error: 'Public registration cannot grant the Admin role.' });
+    }
     if (!isValidRole(role)) {
-      return res.status(400).json({ error: 'Invalid role. Must be Admin or User.' });
+      return res.status(400).json({ error: 'Invalid role. Must be User.' });
     }
     
     // STEP 3: CHECK IF USERNAME ALREADY EXISTS
@@ -102,7 +107,7 @@ router.post('/register', async (req, res) => {
       `INSERT INTO users (username, email, password_hash, role) 
        VALUES ($1, $2, $3, $4) 
        RETURNING id, username, email, role, is_active, created_at`,
-      [username, email, passwordHash, role]
+      [username, email, passwordHash, 'User']
     );
     
     const newUser = result.rows[0];

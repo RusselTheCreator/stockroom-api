@@ -39,6 +39,14 @@ app.use(cors());
 // PARSE JSON REQUEST BODIES
 app.use(express.json());
 
+// REJECT MALFORMED JSON WITH 400 (do not leak the parser exception)
+app.use((error, req, res, next) => {
+  if (error && (error.type === 'entity.parse.failed' || (error instanceof SyntaxError && error.status === 400))) {
+    return res.status(400).json({ error: 'Invalid JSON in request body.' });
+  }
+  return next(error);
+});
+
 // LOG ALL REQUESTS
 app.use(logger);
 

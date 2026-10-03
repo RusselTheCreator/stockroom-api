@@ -8,10 +8,18 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../database/db');
 const apiRequestJWTCheck = require('../middleware/apiRequestJWTCheck');
-const { isRequired } = require('../utils/validation');
+const { isRequired, isIntegerId } = require('../utils/validation');
 
 // APPLY JWT AUTHENTICATION TO ALL WAREHOUSE ROUTES
 router.use(apiRequestJWTCheck);
+
+// REJECT NON-INTEGER PATH IDS BEFORE THEY HIT POSTGRES
+router.param('id', (req, res, next, id) => {
+  if (!isIntegerId(id)) {
+    return res.status(400).json({ error: 'Invalid id. Must be an integer.' });
+  }
+  return next();
+});
 
 // =====================================================
 // GET /api/warehouses
@@ -149,9 +157,15 @@ router.post('/', async (req, res) => {
     // STEP 1: EXTRACT WAREHOUSE DATA FROM REQUEST BODY
     const { name, location, is_active = true } = req.body;
     
-    // STEP 2: VALIDATE REQUIRED FIELDS
+    // STEP 2: VALIDATE REQUIRED FIELDS (must be strings; do not coerce numbers or booleans)
+    if (typeof name !== 'string') {
+      return res.status(400).json({ error: 'Warehouse name must be a string.' });
+    }
     if (!isRequired(name)) {
       return res.status(400).json({ error: 'Warehouse name is required.' });
+    }
+    if (typeof location !== 'string') {
+      return res.status(400).json({ error: 'Warehouse location must be a string.' });
     }
     if (!isRequired(location)) {
       return res.status(400).json({ error: 'Warehouse location is required.' });
@@ -215,6 +229,13 @@ router.put('/:id', async (req, res) => {
     
     // STEP 2: EXTRACT UPDATE DATA FROM REQUEST BODY
     const { name, location, is_active } = req.body;
+
+    if (name !== undefined && typeof name !== 'string') {
+      return res.status(400).json({ error: 'Warehouse name must be a string.' });
+    }
+    if (location !== undefined && typeof location !== 'string') {
+      return res.status(400).json({ error: 'Warehouse location must be a string.' });
+    }
     
     // STEP 3: CHECK IF WAREHOUSE EXISTS
     const warehouseCheck = await pool.query(

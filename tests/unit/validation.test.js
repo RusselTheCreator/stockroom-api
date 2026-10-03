@@ -9,6 +9,7 @@ const {
   isRequired,
   isPositiveNumber,
   isInteger,
+  isIntegerId,
   isValidRole,
   isValidMovementType
 } = require('../../utils/validation');
@@ -85,6 +86,22 @@ describe('Validation Utilities', () => {
     });
   });
   
+  describe('isIntegerId', () => {
+    test('should accept non-negative integers and digit strings', () => {
+      expect(isIntegerId(0)).toBe(true);
+      expect(isIntegerId(12)).toBe(true);
+      expect(isIntegerId('12')).toBe(true);
+    });
+
+    test('should reject non-integers', () => {
+      expect(isIntegerId('abc')).toBe(false);
+      expect(isIntegerId(1.5)).toBe(false);
+      expect(isIntegerId('1.5')).toBe(false);
+      expect(isIntegerId(true)).toBe(false);
+      expect(isIntegerId('1e2')).toBe(false);
+    });
+  });
+
   describe('isValidRole', () => {
     test('should return true for valid roles', () => {
       expect(isValidRole('Admin')).toBe(true);

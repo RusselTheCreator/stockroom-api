@@ -10,6 +10,7 @@ const router = express.Router();
 const pool = require('../database/db');
 const apiRequestJWTCheck = require('../middleware/apiRequestJWTCheck');
 const { getAIProvider } = require('../services/aiProvider');
+const { isIntegerId } = require('../utils/validation');
 
 // APPLY JWT AUTHENTICATION TO ALL AGENT ROUTES
 router.use(apiRequestJWTCheck);
@@ -53,6 +54,13 @@ router.post('/reorder-advice', async (req, res) => {
   try {
     // STEP 1: EXTRACT FILTER PARAMETERS FROM REQUEST
     const { product_id, warehouse_id, low_stock_only = true } = req.body;
+
+    if (product_id !== undefined && product_id !== null && !isIntegerId(product_id)) {
+      return res.status(400).json({ error: 'product_id must be an integer.' });
+    }
+    if (warehouse_id !== undefined && warehouse_id !== null && !isIntegerId(warehouse_id)) {
+      return res.status(400).json({ error: 'warehouse_id must be an integer.' });
+    }
     
     // STEP 2: BUILD QUERY TO GET STOCK DATA
     let query = `
@@ -166,8 +174,11 @@ router.post('/ask', async (req, res) => {
     // STEP 1: EXTRACT QUESTION FROM REQUEST
     const { question } = req.body;
     
-    // STEP 2: VALIDATE QUESTION IS PROVIDED
-    if (!question || question.trim() === '') {
+    // STEP 2: VALIDATE QUESTION IS A NON-EMPTY STRING
+    if (typeof question !== 'string') {
+      return res.status(400).json({ error: 'Question must be a string.' });
+    }
+    if (question.trim() === '') {
       return res.status(400).json({ error: 'Question is required.' });
     }
     

@@ -59,6 +59,26 @@ describe('Authentication API', () => {
       expect(response.body.error).toContain('email');
     });
     
+    test('should reject public registration that requests Admin', async () => {
+      const response = await request(app)
+        .post('/api/authentication/register')
+        .send({
+          username: 'testuseradmin',
+          email: 'testuseradmin@test.com',
+          password: 'password123',
+          role: 'Admin'
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toMatch(/Admin/);
+
+      const created = await pool.query(
+        'SELECT id FROM users WHERE username = $1',
+        ['testuseradmin']
+      );
+      expect(created.rows.length).toBe(0);
+    });
+
     test('should reject registration with short password', async () => {
       const response = await request(app)
         .post('/api/authentication/register')
@@ -123,6 +143,19 @@ describe('Authentication API', () => {
       expect(response.body.error).toContain('Invalid');
     });
     
+    test('should still log in the seeded admin as Admin', async () => {
+      const response = await request(app)
+        .post('/api/authentication/login')
+        .send({
+          username: 'admin',
+          password: 'admin123'
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.user.role).toBe('Admin');
+      expect(response.body).toHaveProperty('jwtToken');
+    });
+
     test('should reject login without credentials', async () => {
       const response = await request(app)
         .post('/api/authentication/login')

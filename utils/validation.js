@@ -47,6 +47,21 @@ function isInteger(value) {
 }
 
 // =====================================================
+// INTEGER ID VALIDATION
+// Accepts a non-negative integer or a digit-only string.
+// Rejects floats, booleans, and numeric strings like "1.5" or "1e2".
+// =====================================================
+function isIntegerId(value) {
+  if (typeof value === 'number') {
+    return Number.isInteger(value) && value >= 0;
+  }
+  if (typeof value === 'string') {
+    return /^(0|[1-9]\d*)$/.test(value);
+  }
+  return false;
+}
+
+// =====================================================
 // ROLE VALIDATION
 // Checks if role is one of the allowed values
 // =====================================================
@@ -73,6 +88,7 @@ module.exports = {
   isRequired,
   isPositiveNumber,
   isInteger,
+  isIntegerId,
   isValidRole,
   isValidMovementType
 };

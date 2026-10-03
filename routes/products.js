@@ -8,10 +8,18 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../database/db');
 const apiRequestJWTCheck = require('../middleware/apiRequestJWTCheck');
-const { isRequired, isPositiveNumber } = require('../utils/validation');
+const { isRequired, isPositiveNumber, isIntegerId } = require('../utils/validation');
 
 // APPLY JWT AUTHENTICATION TO ALL PRODUCT ROUTES
 router.use(apiRequestJWTCheck);
+
+// REJECT NON-INTEGER PATH IDS BEFORE THEY HIT POSTGRES
+router.param('id', (req, res, next, id) => {
+  if (!isIntegerId(id)) {
+    return res.status(400).json({ error: 'Invalid id. Must be an integer.' });
+  }
+  return next();
+});
 
 // =====================================================
 // GET /api/products
