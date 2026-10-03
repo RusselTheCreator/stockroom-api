@@ -33,6 +33,66 @@ function getAIProvider() {
   }
 }
 
+
+// Shared rules for question answering. Orders are not a table in this app.
+const ASK_INSTRUCTIONS = `Rules:
+- Answer only from the context JSON. Do not invent records that are not present.
+- If the context says this application does not track purchase or sales orders, say that and do not invent orders.
+- Never mention passwords, password hashes, or other secrets.
+- If the context says user records are admin-only, say that and do not guess at user records.`;
+
+/**
+ * DROP PASSWORD FIELDS BEFORE A MODEL OR API RESPONSE SEES CONTEXT
+ */
+function stripSecrets(value) {
+  if (Array.isArray(value)) {
+    return value.map(stripSecrets);
+  }
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const [key, child] of Object.entries(value)) {
+      if (/password/i.test(key)) continue;
+      out[key] = stripSecrets(child);
+    }
+    return out;
+  }
+  return value;
+}
+
+/**
+ * TURN SELECTED ROWS INTO A DETERMINISTIC SENTENCE
+ * Tests assert real names and counts without calling AWS.
+ */
+function groundFromContext(context) {
+  const bits = [];
+  if (context.orders && context.orders.tracked === false && context.orders.message) {
+    bits.push(context.orders.message);
+  }
+  if (context.access_note) {
+    bits.push(context.access_note);
+  }
+  const sections = ['users', 'products', 'suppliers', 'warehouses', 'stock', 'movements'];
+  for (const key of sections) {
+    const section = context[key];
+    if (!section || typeof section !== 'object' || Array.isArray(section)) continue;
+    const rows = Array.isArray(section.rows) ? section.rows : [];
+    const labels = rows.map(row => {
+      if (!row || typeof row !== 'object') return null;
+      if (row.username) {
+        return row.email ? `${row.username} <${row.email}>` : row.username;
+      }
+      return row.name || row.product_name || row.sku || null;
+    }).filter(Boolean);
+    const pieces = [];
+    if (section.count != null) pieces.push(`count ${section.count}`);
+    if (section.total_value != null) pieces.push(`total value ${section.total_value}`);
+    if (section.low_stock_count != null) pieces.push(`low stock ${section.low_stock_count}`);
+    if (labels.length) pieces.push(labels.join(', '));
+    if (pieces.length) bits.push(`${key} (${pieces.join('; ')})`);
+  }
+  return bits.join(' ');
+}
+
 // =====================================================
 // MOCK PROVIDER (for testing - no API calls)
 // Returns deterministic responses without external API calls
@@ -82,12 +142,25 @@ class MockProvider {
    * Mock returns a simple canned response
    */
   async answerQuestion(question, context) {
-    // MOCK: RETURN DETERMINISTIC ANSWER
+    // MOCK: ECHO GROUNDED FACTS FROM THE SUPPLIED CONTEXT
+    // Keeps the legacy summary sentence when those totals are present.
+    const safe = stripSecrets(context || {});
+    let answer = 'Based on the current application data.';
+    if (safe.total_products != null && safe.total_warehouses != null && safe.low_stock_count != null) {
+      answer = `Based on the current inventory data, I can see ${safe.total_products} products across ${safe.total_warehouses} warehouses. ${safe.low_stock_count} items are below reorder level.`;
+    } else if (safe.total_products != null && safe.total_warehouses != null) {
+      answer = `Based on the current inventory data, I can see ${safe.total_products} products across ${safe.total_warehouses} warehouses.`;
+    }
+    const grounded = groundFromContext(safe);
+    if (grounded) {
+      answer += ' ' + grounded;
+    }
+    answer += ' This is a mock response for testing.';
     return {
       provider: this.name,
       question: question,
-      answer: `Based on the current inventory data, I can see ${context.total_products} products across ${context.total_warehouses} warehouses. ${context.low_stock_count} items are below reorder level. This is a mock response for testing.`,
-      context_used: context
+      answer: answer,
+      context_used: safe
     };
   }
 }
@@ -162,10 +235,13 @@ Return ONLY a JSON object with format: { "advice": [...] }`;
    */
   async answerQuestion(question, context) {
     // STEP 1: BUILD PROMPT WITH CONTEXT
+    const safe = stripSecrets(context || {});
     const prompt = `You are an inventory management AI assistant. Answer the following question based on the provided context.
 
+${ASK_INSTRUCTIONS}
+
 Context:
-${JSON.stringify(context, null, 2)}
+${JSON.stringify(safe, null, 2)}
 
 Question: ${question}
 
@@ -186,7 +262,7 @@ Provide a clear, concise answer based on the context data.`;
       provider: this.name,
       question: question,
       answer: response.choices[0].message.content,
-      context_used: context
+      context_used: safe
     };
   }
 }
@@ -260,10 +336,13 @@ Return ONLY a JSON object with format: { "advice": [...] }`;
    */
   async answerQuestion(question, context) {
     // STEP 1: BUILD PROMPT WITH CONTEXT
+    const safe = stripSecrets(context || {});
     const prompt = `You are an inventory management AI assistant. Answer the following question based on the provided context.
 
+${ASK_INSTRUCTIONS}
+
 Context:
-${JSON.stringify(context, null, 2)}
+${JSON.stringify(safe, null, 2)}
 
 Question: ${question}
 
@@ -283,7 +362,7 @@ Provide a clear, concise answer based on the context data.`;
       provider: this.name,
       question: question,
       answer: response.content[0].text,
-      context_used: context
+      context_used: safe
     };
   }
 }
@@ -374,23 +453,26 @@ Return ONLY a JSON object with format: { "advice": [...] }`;
    */
   async answerQuestion(question, context) {
     // STEP 1: BUILD PROMPT
+    const safe = stripSecrets(context || {});
     const prompt = `You are an inventory management AI assistant. Answer the following question based on the provided context.
 
+${ASK_INSTRUCTIONS}
+
 Context:
-${JSON.stringify(context, null, 2)}
+${JSON.stringify(safe, null, 2)}
 
 Question: ${question}
 
 Provide a clear, concise answer based on the context data.`;
     
-    // STEP 2: CALL BEDROCK
+    // STEP 2: CALL BEDROCK VIA CONVERSE
     const answer = await this._converse(prompt, 1000);
     
     return {
       provider: this.name,
       question: question,
       answer: answer,
-      context_used: context
+      context_used: safe
     };
   }
 }

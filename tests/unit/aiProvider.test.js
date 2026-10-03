@@ -77,6 +77,29 @@ describe('AI Provider', () => {
       expect(result.advice[0].priority).toBe('HIGH');
     });
     
+
+    test('should echo grounded names and counts and strip password fields', async () => {
+      const context = {
+        orders: {
+          tracked: false,
+          message: 'This application does not track purchase or sales orders.'
+        },
+        products: {
+          count: 1,
+          rows: [{ name: 'Standard Widget', sku: 'WIDGET-001', password_hash: 'should-not-leak' }]
+        }
+      };
+
+      const result = await provider.answerQuestion('Any open orders?', context);
+
+      expect(result.answer).toContain('Standard Widget');
+      expect(result.answer).toContain('count 1');
+      expect(result.answer).toContain('does not track purchase or sales orders');
+      expect(result.answer).not.toContain('should-not-leak');
+      expect(JSON.stringify(result.context_used)).not.toContain('should-not-leak');
+      expect(JSON.stringify(result.context_used)).not.toMatch(/password/i);
+    });
+
     test('should answer questions', async () => {
       const context = {
         total_products: 10,

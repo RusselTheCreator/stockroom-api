@@ -48,7 +48,8 @@ stockroom-api/
 │   ├── agent.js              # AI agent endpoints
 │   └── swagger.js            # Swagger/OpenAPI configuration
 ├── services/
-│   └── aiProvider.js         # AI provider abstraction layer
+│   ├── aiProvider.js         # AI provider abstraction layer
+│   └── askContext.js         # Question-specific context for /api/agent/ask
 ├── utils/
 │   └── validation.js         # Input validation helpers
 ├── tests/
@@ -203,10 +204,26 @@ Open your browser to:
 
 ### AI Agent (JWT Required)
 
+`POST /api/agent/ask` answers natural-language questions from live application data. The handler picks the relevant tables, loads a bounded set of rows plus total counts, and sends that context to the configured provider. It does not answer every question from a fixed five-number inventory summary. `POST /api/agent/reorder-advice` is unchanged: it still analyzes stock that is below reorder level.
+
+Any valid JWT can ask about:
+
+- **Products** — name, SKU, unit, price, reorder level, supplier
+- **Suppliers** — name and contact details
+- **Warehouses** — name and location
+- **Stock** — quantities on hand, low stock, and approximate stock value
+- **Movements** — the most recent stock movements plus the total movement count, not the full history
+
+**Users are admin-only.** An Admin can ask who the accounts are (username, email, role, active flag). Password hashes and password fields are never loaded, never sent to the model, and never returned in `context_used`. A non-Admin token that asks only about users receives **403** (`User records are admin-only`) and no user rows. If the question also asks about inventory, user rows are omitted and the answer says user records are admin-only.
+
+**Orders are not tracked.** There is no orders table. Questions about purchase orders or sales orders are answered with the statement that this application does not track purchase or sales orders. The agent does not invent orders.
+
+The mock provider (`AI_PROVIDER=mock`) needs no API keys. It echoes the selected names and counts so answers can be checked against the database. AWS Bedrock, when configured, calls the model through the Converse API.
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/agent/reorder-advice` | Get AI reorder recommendations |
-| POST | `/api/agent/ask` | Ask AI about inventory |
+| POST | `/api/agent/ask` | Ask about products, suppliers, warehouses, stock, movements, or (Admin) users |
 | GET | `/api/agent/status` | Get AI provider status |
 
 ## Usage Examples
@@ -285,7 +302,7 @@ The API supports multiple AI providers for intelligent inventory analysis.
 AI_PROVIDER=mock
 ```
 
-Returns deterministic responses for testing without external API calls.
+Returns deterministic responses for testing without external API calls. Ask answers echo the bounded rows selected for the question (names and counts) and do not require AWS or other provider keys.
 
 ### OpenAI (GPT-4)
 

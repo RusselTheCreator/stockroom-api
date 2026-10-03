@@ -41,7 +41,7 @@ describe('Complete Inventory Flow', () => {
           username: 'flowtest',
           email: 'flowtest@test.com',
           password: 'password123',
-          role: 'Admin'
+          role: 'User'
         });
       
       expect(response.status).toBe(201);

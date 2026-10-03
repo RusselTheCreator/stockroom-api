@@ -440,23 +440,31 @@ POST /api/agent/ask
 Content-Type: application/json
 
 {
-  "question": "What is the total inventory value?"
+  "question": "Which suppliers do we have?"
 }
 ```
 
-**Response (200):**
+Any valid JWT can ask about products, suppliers, warehouses, stock levels, and recent stock movements. Context is a bounded set of matching rows plus counts, not a dump of movement history and not a fixed five-number summary.
+
+User questions are admin-only. A non-Admin asking only about users receives **403** with `User records are admin-only` and no user rows. Password hashes are never included.
+
+This application does not track purchase or sales orders. An orders question is answered with that fact and does not invent orders.
+
+**Response (200, mock provider, shape varies with the question):**
 ```json
 {
   "message": "Question answered successfully.",
   "provider": "mock",
-  "question": "What is the total inventory value?",
-  "answer": "Based on the current inventory data, I can see 10 products across 2 warehouses. 3 items are below reorder level. This is a mock response for testing.",
+  "question": "Which suppliers do we have?",
+  "answer": "Based on the current application data. suppliers (count 2; TechParts Inc, Global Components) This is a mock response for testing.",
   "context_used": {
-    "total_products": 10,
-    "total_warehouses": 2,
-    "low_stock_count": 3,
-    "total_stock_value": "15234.50",
-    "recent_movements_7days": 25
+    "topics": ["suppliers"],
+    "suppliers": {
+      "count": 2,
+      "returned": 2,
+      "limit": 25,
+      "rows": []
+    }
   }
 }
 ```

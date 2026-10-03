@@ -10,6 +10,7 @@ const router = express.Router();
 const pool = require('../database/db');
 const apiRequestJWTCheck = require('../middleware/apiRequestJWTCheck');
 const { getAIProvider } = require('../services/aiProvider');
+const { buildAskContext } = require('../services/askContext');
 const { isIntegerId } = require('../utils/validation');
 
 // APPLY JWT AUTHENTICATION TO ALL AGENT ROUTES
@@ -145,7 +146,11 @@ router.post('/reorder-advice', async (req, res) => {
  * @swagger
  * /api/agent/ask:
  *   post:
- *     summary: Ask AI agent a question about inventory
+ *     summary: Ask a natural-language question about application data
+ *     description: >
+ *       Answers from bounded rows (products, suppliers, warehouses, stock, recent movements).
+ *       User records are admin-only and never include passwords. Purchase and sales orders
+ *       are not tracked. Reorder advice is a separate endpoint.
  *     tags: [AI Agent]
  *     security:
  *       - bearerAuth: []
@@ -160,12 +165,14 @@ router.post('/reorder-advice', async (req, res) => {
  *             properties:
  *               question:
  *                 type: string
- *                 description: Your inventory question
+ *                 description: Question about products, suppliers, warehouses, stock, movements, or (Admin) users
  *     responses:
  *       200:
- *         description: AI-generated answer
+ *         description: AI-generated answer grounded in selected rows
  *       400:
  *         description: Missing question
+ *       403:
+ *         description: User records requested by a non-Admin
  *       500:
  *         description: AI provider error
  */
@@ -181,80 +188,23 @@ router.post('/ask', async (req, res) => {
     if (question.trim() === '') {
       return res.status(400).json({ error: 'Question is required.' });
     }
+
+    // STEP 3: LOAD ONLY THE TABLES THE QUESTION NEEDS
+    // Admin may see users. Non-admins never receive user rows.
+    // Orders are not a table in this application.
+    const built = await buildAskContext(question.trim(), req.user && req.user.role);
+    if (built.denied) {
+      return res.status(built.status).json(built.body);
+    }
     
-    // STEP 3: GATHER INVENTORY CONTEXT FOR AI
-    
-    // GET TOTAL PRODUCTS COUNT
-    const productsResult = await pool.query(
-      'SELECT COUNT(*) as count FROM products WHERE is_active = true'
-    );
-    const totalProducts = parseInt(productsResult.rows[0].count);
-    
-    // GET TOTAL WAREHOUSES COUNT
-    const warehousesResult = await pool.query(
-      'SELECT COUNT(*) as count FROM warehouses WHERE is_active = true'
-    );
-    const totalWarehouses = parseInt(warehousesResult.rows[0].count);
-    
-    // GET LOW STOCK COUNT
-    const lowStockResult = await pool.query(`
-      SELECT COUNT(*) as count
-      FROM stock_levels sl
-      INNER JOIN products p ON sl.product_id = p.id
-      WHERE sl.quantity < p.reorder_level AND p.is_active = true
-    `);
-    const lowStockCount = parseInt(lowStockResult.rows[0].count);
-    
-    // GET TOTAL STOCK VALUE (approximate)
-    const stockValueResult = await pool.query(`
-      SELECT SUM(sl.quantity * p.unit_price) as total_value
-      FROM stock_levels sl
-      INNER JOIN products p ON sl.product_id = p.id
-      WHERE p.is_active = true
-    `);
-    const totalStockValue = parseFloat(stockValueResult.rows[0].total_value || 0);
-    
-    // GET RECENT MOVEMENTS COUNT
-    const movementsResult = await pool.query(`
-      SELECT COUNT(*) as count
-      FROM stock_movements
-      WHERE created_at > NOW() - INTERVAL '7 days'
-    `);
-    const recentMovements = parseInt(movementsResult.rows[0].count);
-    
-    // GET TOP 10 PRODUCTS BY QUANTITY
-    const topProductsResult = await pool.query(`
-      SELECT 
-        p.name,
-        p.sku,
-        SUM(sl.quantity) as total_quantity,
-        p.unit
-      FROM stock_levels sl
-      INNER JOIN products p ON sl.product_id = p.id
-      WHERE p.is_active = true
-      GROUP BY p.id, p.name, p.sku, p.unit
-      ORDER BY total_quantity DESC
-      LIMIT 10
-    `);
-    
-    // STEP 4: BUILD CONTEXT OBJECT FOR AI
-    const context = {
-      total_products: totalProducts,
-      total_warehouses: totalWarehouses,
-      low_stock_count: lowStockCount,
-      total_stock_value: totalStockValue.toFixed(2),
-      recent_movements_7days: recentMovements,
-      top_products: topProductsResult.rows
-    };
-    
-    // STEP 5: GET AI PROVIDER INSTANCE
+    // STEP 4: GET AI PROVIDER INSTANCE
     const aiProvider = getAIProvider();
     
-    // STEP 6: CALL AI PROVIDER TO ANSWER QUESTION
+    // STEP 5: CALL AI PROVIDER TO ANSWER QUESTION
     console.log(`Using AI provider: ${aiProvider.name}`);
-    const response = await aiProvider.answerQuestion(question, context);
+    const response = await aiProvider.answerQuestion(question.trim(), built.context);
     
-    // STEP 7: RETURN AI-GENERATED ANSWER
+    // STEP 6: RETURN AI-GENERATED ANSWER
     return res.status(200).json({
       message: 'Question answered successfully.',
       ...response
