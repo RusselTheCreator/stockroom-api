@@ -298,7 +298,11 @@ class BedrockProvider {
     this.name = 'bedrock';
     
     // IMPORT AWS SDK ONLY WHEN NEEDED
-    const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock-runtime');
+    // Converse works for both Claude and Amazon Nova. InvokeModelCommand
+    // was previously required inside the constructor, so the methods could
+    // not see it and every Bedrock call failed before AWS was contacted.
+    const { BedrockRuntimeClient, ConverseCommand } = require('@aws-sdk/client-bedrock-runtime');
+    this.ConverseCommand = ConverseCommand;
     
     // CHECK FOR AWS CREDENTIALS
     if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
@@ -315,6 +319,19 @@ class BedrockProvider {
     });
     
     this.modelId = process.env.AWS_BEDROCK_MODEL_ID || 'anthropic.claude-3-sonnet-20240229-v1:0';
+  }
+  
+  async _converse(prompt, maxTokens) {
+    const command = new this.ConverseCommand({
+      modelId: this.modelId,
+      messages: [{ role: 'user', content: [{ text: prompt }] }],
+      inferenceConfig: { maxTokens: maxTokens, temperature: 0 }
+    });
+    const response = await this.client.send(command);
+    const parts = response.output && response.output.message && response.output.message.content
+      ? response.output.message.content
+      : [];
+    return parts.map(part => part.text || '').join('').trim();
   }
   
   /**
@@ -338,28 +355,12 @@ For each product below reorder level, provide:
 
 Return ONLY a JSON object with format: { "advice": [...] }`;
     
-    // STEP 2: BUILD BEDROCK REQUEST
-    const input = {
-      modelId: this.modelId,
-      contentType: 'application/json',
-      accept: 'application/json',
-      body: JSON.stringify({
-        anthropic_version: 'bedrock-2023-05-31',
-        max_tokens: 2000,
-        messages: [
-          { role: 'user', content: prompt }
-        ]
-      })
-    };
+    // STEP 2: CALL BEDROCK
+    const content = await this._converse(prompt, 2000);
     
-    // STEP 3: INVOKE MODEL
-    const command = new InvokeModelCommand(input);
-    const response = await this.client.send(command);
-    
-    // STEP 4: PARSE RESPONSE
-    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-    const content = responseBody.content[0].text;
-    const parsedResponse = JSON.parse(content);
+    // STEP 3: PARSE RESPONSE
+    const jsonText = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    const parsedResponse = JSON.parse(jsonText);
     
     return {
       provider: this.name,
@@ -382,27 +383,8 @@ Question: ${question}
 
 Provide a clear, concise answer based on the context data.`;
     
-    // STEP 2: BUILD BEDROCK REQUEST
-    const input = {
-      modelId: this.modelId,
-      contentType: 'application/json',
-      accept: 'application/json',
-      body: JSON.stringify({
-        anthropic_version: 'bedrock-2023-05-31',
-        max_tokens: 1000,
-        messages: [
-          { role: 'user', content: prompt }
-        ]
-      })
-    };
-    
-    // STEP 3: INVOKE MODEL
-    const command = new InvokeModelCommand(input);
-    const response = await this.client.send(command);
-    
-    // STEP 4: PARSE RESPONSE
-    const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-    const answer = responseBody.content[0].text;
+    // STEP 2: CALL BEDROCK
+    const answer = await this._converse(prompt, 1000);
     
     return {
       provider: this.name,
